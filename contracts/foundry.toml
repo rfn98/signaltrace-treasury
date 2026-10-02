@@ -1,0 +1,43 @@
+[profile.default]
+src = "src"
+out = "out"
+test = "test"
+script = "script"
+libs = ["lib"]
+cache_path = "cache"
+
+solc_version = "0.8.28"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+via_ir = false
+
+# Reproducible builds + clean Etherscan verification.
+bytecode_hash = "none"
+cbor_metadata = false
+
+# Fuzz/invariant budgets used by the accounting invariant suite.
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 256
+depth = 32
+fail_on_revert = false
+call_override = false
+shrink_run_limit = 1000
+
+# Stricter profile for release / CI verification.
+[profile.ci.fuzz]
+runs = 1000
+
+[profile.ci.invariant]
+runs = 1000
+depth = 64
+fail_on_revert = false
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"

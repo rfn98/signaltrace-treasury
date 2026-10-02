@@ -1,0 +1,192 @@
+/*
+ * Milestone J — design tokens and base styles.
+ *
+ * A deliberately quiet console: near-white ground, white cards, hairline borders, one accent, and
+ * status colour used ONLY where it carries meaning. No gradients, no glow, no shadows deeper than
+ * a single hairline, and motion limited to a 120ms colour transition so nothing pulses for
+ * attention it has not earned.
+ *
+ * Dark mode is the default because a treasury console is read at night, but every colour is
+ * declared as a token with an explicit light-mode override so the two themes cannot drift apart.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces, from the page ground up to an input well. */
+  --ground: #0b0d10;
+  --surface: #121519;
+  --surface-raised: #171b20;
+  --surface-well: #0d1013;
+
+  /* Hairlines. Two weights: structural, and for emphasis. */
+  --line: #22272e;
+  --line-strong: #313942;
+
+  /* Text. Four steps, because "muted" and "faint" mean different things in a table. */
+  --text: #e8ebef;
+  --text-muted: #9aa4b0;
+  --text-faint: #6b7684;
+
+  /* One accent, used for links and focus only. Never for status. */
+  --accent: #6ea8fe;
+  --accent-dim: #16233a;
+  --accent-line: #2b4a7a;
+
+  /*
+   * Status tones. Each is a small set rather than one colour so a badge can carry a tinted ground
+   * AND readable text at the same contrast, which a single flat colour cannot do.
+   */
+  --positive-fg: #5fd39a;
+  --positive-bg: #10231b;
+  --positive-line: #1d4534;
+
+  --caution-fg: #e8b563;
+  --caution-bg: #241d10;
+  --caution-line: #4a3a1c;
+
+  --negative-fg: #f08a8a;
+  --negative-bg: #261414;
+  --negative-line: #4d2424;
+
+  --neutral-fg: #9aa4b0;
+  --neutral-bg: #16191d;
+  --neutral-line: #2a3037;
+
+  --font-sans: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --max-width: 1160px;
+  --transition: 120ms ease-out;
+}
+
+/* Light theme. Same tokens, different values — no component knows which theme is active. */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+
+    --ground: #f7f8fa;
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --surface-well: #f2f4f7;
+
+    --line: #e3e7ec;
+    --line-strong: #cdd4dc;
+
+    --text: #12161b;
+    --text-muted: #5c6673;
+    --text-faint: #8a94a1;
+
+    --accent: #1a5fd0;
+    --accent-dim: #e8f0fe;
+    --accent-line: #b9d0f7;
+
+    --positive-fg: #10714a;
+    --positive-bg: #e7f6ee;
+    --positive-line: #b8e2cd;
+
+    --caution-fg: #8a5a06;
+    --caution-bg: #fdf3e2;
+    --caution-line: #f0dab0;
+
+    --negative-fg: #a52424;
+    --negative-bg: #fceaea;
+    --negative-line: #f2c9c9;
+
+    --neutral-fg: #5c6673;
+    --neutral-bg: #f2f4f7;
+    --neutral-line: #dfe4ea;
+  }
+}
+
+html {
+  height: 100%;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  color: var(--text);
+  background: var(--ground);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+/*
+ * One focus treatment for the whole console. Visible, and using the accent rather than the OS
+ * default, so keyboard navigation is obviously keyboard navigation in a financial tool.
+ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/*
+ * Tabular figures everywhere a number is compared vertically or in a column. Without this,
+ * digits jitter as values change, which makes a table harder to scan than it should be.
+ */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/*
+ * Visually hidden but available to assistive technology. Used where a colour or a short token
+ * carries meaning that must also exist as text.
+ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Respect a reader who has asked for less motion. Nothing here is load-bearing, so removing the
+ * transitions costs nothing.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

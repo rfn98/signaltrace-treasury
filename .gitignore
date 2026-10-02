@@ -1,0 +1,32 @@
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/lib/
+
+# Dependencies (restore with: cd contracts && forge install foundry-rs/forge-std@v1.16.2)
+#                                 && forge install OpenZeppelin/openzeppelin-contracts@v5.4.0)
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+next-env.d.ts
+# Playwright output (traces, screenshots, reports) — regenerable, never source.
+web/test-results/
+web/playwright-report/
+
+# Environment — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Local DB volumes
+docker/volumes/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

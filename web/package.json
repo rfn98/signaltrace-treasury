@@ -1,0 +1,44 @@
+{
+  "name": "web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prisma:validate": "prisma validate",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "verify:db": "tsx scripts/verify-db.ts",
+    "reconcile:chain": "tsx scripts/reconcile-chain.ts",
+    "investigator:ollama": "tsx scripts/investigator-ollama.ts",
+    "investigate:payment": "tsx --conditions=react-server scripts/investigate-payment.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "next": "16.3.8",
+    "prisma": "^6.19.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
+    "viem": "^2.57.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.0.3"
+  }
+}

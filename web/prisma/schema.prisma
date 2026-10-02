@@ -1,0 +1,172 @@
+// SignalTrace Treasury — persistence / indexing schema.
+//
+// ARCHITECTURAL BOUNDARY
+// This database is an application persistence and indexing layer ONLY.
+// The blockchain is the source of truth for funds, payment execution, payment
+// status once verified on-chain, authorization, policy enforcement, token
+// balances and Treasury state.
+//
+// Nothing in this schema is evidence of authorization. `Treasury.ownerAddress`,
+// `Treasury.agentAddress` and `Recipient.approved` are indexed copies of on-chain
+// configuration, not authority. A payment row never proves a payment was
+// authorized, was executable, or that a wallet holds permission; those facts are
+// re-read from the deployed contract.
+//
+// MONETARY REPRESENTATION
+// All monetary values are integer base units in PostgreSQL BIGINT, surfaced as
+// BigInt in TypeScript. No floats, doubles, or formatted currency strings are
+// stored anywhere. For mUSD, 1 mUSD = 1_000_000 base units.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PaymentStatus {
+  BLOCKED
+  PENDING
+  AUTO_APPROVED
+  APPROVED
+  REJECTED
+  EXECUTED
+}
+
+/// A deployed network. Unique on chainId: one row per network.
+model Chain {
+  id              Int      @id @default(autoincrement())
+  chainId         Int      @unique
+  name            String
+  nativeSymbol    String
+  explorerBaseUrl String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tokens    Token[]
+  treasuries Treasury[]
+  events    ChainEvent[]
+}
+
+/// A deployed ERC20 asset. Unique on (chainId, address).
+model Token {
+  id        Int      @id @default(autoincrement())
+  chainId   Int
+  address   String
+  name      String
+  symbol    String
+  decimals  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chain      Chain      @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  treasuries Treasury[]
+
+  @@unique([chainId, address])
+  @@index([chainId])
+}
+
+/// The deployed Treasury contract. Unique on (chainId, address).
+/// ownerAddress / agentAddress are indexed configuration only, never authority.
+model Treasury {
+  id           Int      @id @default(autoincrement())
+  chainId      Int
+  address      String
+  tokenId      Int
+  ownerAddress String
+  agentAddress String
+  paused       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  chain      Chain           @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  asset      Token           @relation(fields: [tokenId], references: [id])
+  recipients Recipient[]
+  payments   PaymentRequest[]
+
+  @@unique([chainId, address])
+  @@index([tokenId])
+}
+
+/// A Treasury recipient. Unique on (treasuryId, address).
+/// `approved` mirrors the on-chain allowlist; it is an indexed cache, not a grant.
+model Recipient {
+  id         Int      @id @default(autoincrement())
+  treasuryId Int
+  address    String
+  approved   Boolean  @default(false)
+  category   String
+  addedAt    DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  treasury Treasury          @relation(fields: [treasuryId], references: [id], onDelete: Cascade)
+  payments PaymentRequest[]
+
+  @@unique([treasuryId, address])
+  @@index([treasuryId])
+}
+
+/// An indexed payment request. Unique on (treasuryId, onChainPaymentId), so
+/// re-indexing the same on-chain payment can never create a duplicate row.
+model PaymentRequest {
+  id                Int           @id @default(autoincrement())
+  treasuryId        Int
+  recipientId       Int
+  onChainPaymentId  BigInt
+  amountBaseUnits   BigInt
+  reference         String
+  status            PaymentStatus @default(PENDING)
+  dayIndex          Int
+  monthKey          Int
+  category          String
+  requestedBy       String
+  approvedBy        String?
+  executedBy        String?
+  createdAt         DateTime
+  updatedAt         DateTime
+  createdTxHash     String?
+  approvedTxHash    String?
+  rejectedTxHash    String?
+  executedTxHash    String?
+  createdBlockNumber BigInt?
+  approvedBlockNumber BigInt?
+  executedBlockNumber BigInt?
+  createdTxAt       DateTime?
+  executedTxAt      DateTime?
+  observedAt        DateTime      @default(now())
+
+  treasury  Treasury       @relation(fields: [treasuryId], references: [id], onDelete: Cascade)
+  recipient Recipient      @relation(fields: [recipientId], references: [id])
+  events    ChainEvent[]
+
+  @@unique([treasuryId, onChainPaymentId])
+  @@unique([treasuryId, reference])
+  @@index([status])
+}
+
+/// Generic on-chain transaction/event index for later evidence work.
+/// Never authoritative: a row here records that something was observed, nothing more.
+/// Unique on (chainId, txHash, logIndex) so repeated indexing is idempotent.
+model ChainEvent {
+  id                Int      @id @default(autoincrement())
+  chainId           Int
+  txHash            String
+  blockNumber       BigInt
+  transactionIndex  Int?
+  logIndex          Int?
+  eventName         String
+  contractAddress   String
+  paymentRequestId  Int?
+  observedAt        DateTime @default(now())
+
+  chain  Chain          @relation(fields: [chainId], references: [id], onDelete: Cascade)
+  payment PaymentRequest? @relation(fields: [paymentRequestId], references: [id], onDelete: SetNull)
+
+  @@unique([chainId, txHash, logIndex])
+  @@index([paymentRequestId])
+  @@index([contractAddress])
+  @@index([eventName])
+}
