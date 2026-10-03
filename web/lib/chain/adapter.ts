@@ -1,7 +1,7 @@
 import { createPublicClient, getAddress, http, type Abi, type PublicClient } from "viem";
 import { arbitrumSepolia } from "viem/chains";
-import treasuryArtifact from "../../../contracts/out/Treasury.sol/Treasury.json";
-import tokenArtifact from "../../../contracts/out/MockERC20.sol/MockERC20.json";
+import treasuryAbiJson from "@/lib/chain/abi/Treasury.json";
+import tokenAbiJson from "@/lib/chain/abi/MockERC20.json";
 import type { Payment, Policy, RecipientState, TreasuryCounters } from "@/lib/policy/types";
 import { PaymentStatus } from "@/lib/policy/types";
 
@@ -21,8 +21,8 @@ import { PaymentStatus } from "@/lib/policy/types";
  *     asserted.
  */
 
-export const treasuryAbi = treasuryArtifact.abi as Abi;
-export const tokenAbi = tokenArtifact.abi as Abi;
+export const treasuryAbi = treasuryAbiJson as Abi;
+export const tokenAbi = tokenAbiJson as Abi;
 
 export const CHAIN = arbitrumSepolia;
 
