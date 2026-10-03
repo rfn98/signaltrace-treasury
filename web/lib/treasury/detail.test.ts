@@ -72,18 +72,14 @@ function result(overrides: {
     policy: {
       decision: decision as never,
       allowed: decision !== "BLOCKED",
-      reasonCode:
-        decision === "AUTO_APPROVED"
-          ? ReasonCode.None
-          : decision === "PENDING"
-            ? ReasonCode.SingleTxLimit
-            : ReasonCode.UnknownRecipient,
-      reasonName:
-        decision === "AUTO_APPROVED"
-          ? "None"
-          : decision === "PENDING"
-            ? "SingleTxLimit"
-            : "UnknownRecipient",
+      // Mirrors `evaluateCreation` (web/lib/policy/evaluate.ts:154-168), which returns
+      // `ReasonCode.None` for BOTH non-blocked outcomes. A creation only carries a failing
+      // check's reason when it is BLOCKED — that same reason is what sets `allowed: false` and
+      // the contract's `status = Blocked` (Treasury.sol:397-408). So AUTO_APPROVED and PENDING
+      // are `None`, and only BLOCKED carries `UnknownRecipient`. `evaluate.test.ts` and
+      // `live-agreement.test.ts` already pin this against the deployed contract.
+      reasonCode: decision === "BLOCKED" ? ReasonCode.UnknownRecipient : ReasonCode.None,
+      reasonName: decision === "BLOCKED" ? "UnknownRecipient" : "None",
       reasons: overrides.reasons ?? [],
       authorityNote: "Policy is evaluated from on-chain state by the deterministic engine. No language model participates.",
     },
@@ -254,12 +250,15 @@ describe("LAW 1 — policy and lifecycle are rendered as independent facts", () 
     expect(approved.verdict.policyReasonCode).toBe(ReasonCode.None);
     expect(approved.verdict.policyReasonName).toBe("None");
 
-    // A decision carrying a real reason passes through identically, so the panel has something to
-    // show. This fixture models PENDING with SingleTxLimit; production `evaluateCreation` returns
-    // None for PENDING too. Either way the projection must not rewrite what it was given.
+    // PENDING is `None` for the same reason AUTO_APPROVED is: both are non-blocked outcomes of
+    // `evaluateCreation`, so no check failed. This is the case the projection must not dress up
+    // as a failure reason.
     const pending = toDetailPanel(result({ decision: "PENDING" }), OPTIONS);
-    expect(pending.verdict.policyReasonCode).toBe(ReasonCode.SingleTxLimit);
-    expect(pending.verdict.policyReasonName).toBe("SingleTxLimit");
+    expect(pending.verdict.policyReasonCode).toBe(ReasonCode.None);
+    expect(pending.verdict.policyReasonName).toBe("None");
+
+    // A real reason reaches the panel only on a blocked payment, where the reason IS the answer.
+    // (BLOCKED is asserted above; the helper's own mapping is covered in status.test.ts.)
   });
 });
 
