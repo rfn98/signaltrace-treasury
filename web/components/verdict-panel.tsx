@@ -15,6 +15,7 @@
  * appears here as in the evidence.
  */
 import type { VerdictPanelModel } from "@/lib/treasury/types";
+import { policyReasonLabel } from "@/lib/ui/status";
 import { Notice } from "./notice";
 import { StatusBadge } from "./status-badge";
 import styles from "./ui.module.css";
@@ -22,6 +23,10 @@ import styles from "./ui.module.css";
 export function VerdictPanel({ verdict }: { verdict: VerdictPanelModel }) {
   const blocked = verdict.policy.token === "BLOCKED";
   const onChainMissing = verdict.lifecycle === null;
+  // `ReasonCode.None` means no check failed, which is the expected reason for an approved or
+  // pending payment. Rendering it would read as an unexplained verdict, so no label is shown. A
+  // real failure reason still renders, and the reason code and name stay on the model either way.
+  const policyReason = policyReasonLabel(verdict.policyReasonCode, verdict.policyReasonName);
 
   return (
     <section className={styles.card} aria-labelledby="verdict-heading">
@@ -37,9 +42,11 @@ export function VerdictPanel({ verdict }: { verdict: VerdictPanelModel }) {
           <div className={styles.stackTight}>
             <span className={styles.eyebrow}>Policy decision — what the engine would do now</span>
             <StatusBadge status={verdict.policy} showMeaning />
-            <span className={styles.label}>
-              Reason <span className={styles.mono}>{verdict.policyReasonName}</span>
-            </span>
+            {policyReason ? (
+              <span className={styles.label}>
+                Reason <span className={styles.mono}>{policyReason}</span>
+              </span>
+            ) : null}
           </div>
 
           <div className={styles.stackTight}>

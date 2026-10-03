@@ -189,6 +189,18 @@ describe("toPaymentRow — the chain/index join", () => {
   it("carries a month label derived from the on-chain month key", () => {
     const row = toPaymentRow(payment, { approved: true, category: "VENDOR" }, indexed);
     expect(row.monthKey).toBe("24321");
-    expect(row.monthLabel).toBe("2026-09");
+    // Named as the policy bucket it is. `monthKey` itself is untouched, and the label is built from
+    // the chain's key — never from the index's `createdAt`.
+    expect(row.monthLabel).toBe("Policy month · September 2026");
+  });
+
+  it("names the policy month from the bucket, not from an indexed creation timestamp", () => {
+    // The indexed row carries a concrete creation time. If the label were derived from that, moving
+    // the index entry to another month would change the label — and the policy bucket would silently
+    // stop describing itself. Moving the indexed timestamp must not move the bucket.
+    const lateCreation = { ...indexed, createdAt: "2027-03-01T00:00:00.000Z" };
+    const row = toPaymentRow(payment, { approved: true, category: "VENDOR" }, lateCreation);
+    expect(row.monthLabel).toBe("Policy month · September 2026");
+    expect(row.monthKey).toBe("24321");
   });
 });

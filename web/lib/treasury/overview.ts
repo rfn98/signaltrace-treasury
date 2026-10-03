@@ -27,9 +27,9 @@ import {
   readPreviewHeadroom,
   resolveRpcUrl,
 } from "@/lib/chain/adapter";
-import { monthKeyToYearMonth } from "@/lib/policy/calendar";
 import { CHAIN_ID, TREASURY_ADDRESS } from "@/lib/policy/types";
 import { getTreasuryByChain } from "@/lib/queries";
+import { formatDayLabel, formatMonthLabel } from "@/lib/ui/format";
 import { usageTone } from "@/lib/ui/status";
 import type { PolicyLimitView, TreasuryOverview, UsageView } from "./types";
 
@@ -132,6 +132,18 @@ export async function loadTreasuryOverview(
 
   const policy = snapshot.policy;
 
+  /*
+   * Bucket labels are PRESENTATION ONLY and are derived from the block timestamp we already
+   * observed, not recomputed from `dayKey`/`monthKey`.
+   *
+   * `dayKey` and `monthKey` remain exactly what the contract returned and remain what
+   * `committed` was counted against — the arithmetic above this comment is untouched. A reader
+   * cannot reconcile "Day 20728" against a calendar, so the label is spelled out. Deriving it
+   * from the same observed block also means the label cannot disagree with the committed
+   * figure it sits above: both describe one instant.
+   */
+  const observedAt = snapshot.blockTimestamp;
+
   const usage: UsageView[] = [
     usageView(
       "day",
@@ -139,7 +151,7 @@ export async function loadTreasuryOverview(
       policy.dailyLimit,
       headroom.dayRemaining,
       headroom.dayUnlimited,
-      `Day ${committed.dayKey.toString()}`,
+      formatDayLabel(observedAt),
     ),
     usageView(
       "month",
@@ -147,7 +159,7 @@ export async function loadTreasuryOverview(
       policy.monthlyLimit,
       headroom.monthRemaining,
       headroom.monthUnlimited,
-      monthKeyToYearMonth(committed.monthKey),
+      formatMonthLabel(observedAt),
     ),
   ];
 

@@ -11,9 +11,12 @@ import {
   explorerUrl,
   formatAmount,
   formatBlock,
+  formatDayLabel,
   formatIsoDate,
   formatLatency,
+  formatMonthLabel,
   formatPercent,
+  formatPolicyMonthLabel,
   formatTimestamp,
   shortAddress,
   shortHash,
@@ -130,6 +133,68 @@ describe("formatLatency", () => {
     expect(formatLatency(999)).toBe("999 ms");
     expect(formatLatency(1500)).toBe("1.5 s");
     expect(formatLatency(null)).toBe("—");
+  });
+});
+
+describe("formatDayLabel / formatMonthLabel", () => {
+  // 2026-10-02T12:00:00Z, the observed-block timestamp these labels are formatted from.
+  const october = 1790942400n;
+
+  it("names the day in a form a reader can place on a calendar", () => {
+    expect(formatDayLabel(october)).toBe("Day · Oct 2, 2026");
+  });
+
+  it("names the month in a form a reader can place on a calendar", () => {
+    expect(formatMonthLabel(october)).toBe("Month · October 2026");
+  });
+
+  it("reads the same calendar day regardless of the hour, because the chain reports UTC", () => {
+    const justAfterMidnight = BigInt(Math.floor(Date.UTC(2026, 9, 2, 0, 0, 1) / 1000));
+    const justBeforeMidnight = BigInt(Math.floor(Date.UTC(2026, 9, 2, 23, 59, 59) / 1000));
+    expect(formatDayLabel(justAfterMidnight)).toBe("Day · Oct 2, 2026");
+    expect(formatDayLabel(justBeforeMidnight)).toBe("Day · Oct 2, 2026");
+  });
+
+  it("does not roll the label forward a day early in a negative-offset timezone", () => {
+    // 2026-10-02T00:30:00Z is still October 1 in any zone west of UTC-1. Pinning to UTC means a
+    // reviewer in New York and one in Berlin are reading about the same day the chain recorded.
+    const justAfterMidnightUtc = BigInt(Math.floor(Date.UTC(2026, 9, 2, 0, 30) / 1000));
+    expect(formatDayLabel(justAfterMidnightUtc)).toBe("Day · Oct 2, 2026");
+  });
+
+  it("shows an absent value as a dash rather than inventing a date", () => {
+    expect(formatDayLabel(null)).toBe("Day · —");
+    expect(formatMonthLabel(undefined)).toBe("Month · —");
+    expect(formatDayLabel("not-a-number")).toBe("Day · —");
+  });
+});
+
+describe("formatPolicyMonthLabel", () => {
+  it("names the contract's monthKey as a policy month", () => {
+    // 24321 = 2026 * 12 + 9, the bucket both demo payments were reserved in.
+    expect(formatPolicyMonthLabel(24321n)).toBe("Policy month · September 2026");
+  });
+
+  it("decodes the December edge case rather than rolling into the next January", () => {
+    // monthKey 2026 * 12 + 12. Naive floor division calls this month 0 of 2027.
+    expect(formatPolicyMonthLabel(2026n * 12n + 12n)).toBe("Policy month · December 2026");
+    expect(formatPolicyMonthLabel(2026n * 12n + 1n)).toBe("Policy month · January 2026");
+  });
+
+  it("admits an absent key instead of inventing a month", () => {
+    expect(formatPolicyMonthLabel(null)).toBe("Policy month · —");
+    expect(formatPolicyMonthLabel(undefined)).toBe("Policy month · —");
+  });
+
+  it("rejects a key that is not a real month", () => {
+    // A month number outside 1..12 cannot come from the contract, and must not be rendered as if
+    // it could. `monthKeyToYearMonth` cannot produce one, so this covers a hand-built value.
+    expect(formatPolicyMonthLabel(0n)).toBe("Policy month · —");
+  });
+
+  it("is presentation only: the same key always names the same month", () => {
+    const key = 24321n;
+    expect(formatPolicyMonthLabel(key)).toBe(formatPolicyMonthLabel(key));
   });
 });
 

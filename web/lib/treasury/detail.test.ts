@@ -245,6 +245,22 @@ describe("LAW 1 — policy and lifecycle are rendered as independent facts", () 
     // A blocked policy alongside an executed lifecycle is itself a finding worth showing.
     expect(model.verdict.lifecycle?.token).toBe("EXECUTED");
   });
+
+  it("carries the contract's reason on the model untouched, including ReasonCode.None", () => {
+    // The reason is data, and it stays data. The UI shows no Reason row for `None`, so the model is
+    // the only place it survives — a "fix" that blanked these fields would make the panel look right
+    // while destroying the reason a reader can audit.
+    const approved = toDetailPanel(result({ decision: "AUTO_APPROVED" }), OPTIONS);
+    expect(approved.verdict.policyReasonCode).toBe(ReasonCode.None);
+    expect(approved.verdict.policyReasonName).toBe("None");
+
+    // A decision carrying a real reason passes through identically, so the panel has something to
+    // show. This fixture models PENDING with SingleTxLimit; production `evaluateCreation` returns
+    // None for PENDING too. Either way the projection must not rewrite what it was given.
+    const pending = toDetailPanel(result({ decision: "PENDING" }), OPTIONS);
+    expect(pending.verdict.policyReasonCode).toBe(ReasonCode.SingleTxLimit);
+    expect(pending.verdict.policyReasonName).toBe("SingleTxLimit");
+  });
 });
 
 describe("LAW 2 — the advisory layer holds no authority", () => {

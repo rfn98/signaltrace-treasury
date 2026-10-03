@@ -12,6 +12,7 @@
  * truncated identifier that cannot be recovered is not evidence.
  */
 import { formatBaseUnits } from "@/lib/json";
+import { monthKeyToYearMonth } from "@/lib/policy/calendar";
 
 /**
  * Shortens an address for a dense table: `0xD14e45a9…ACF947D1`.
@@ -70,6 +71,95 @@ export function formatTimestamp(seconds: bigint | string | null | undefined): st
   const ms = Number(seconds) * 1000;
   if (!Number.isFinite(ms)) return "—";
   return new Date(ms).toISOString().replace(".000Z", "Z");
+}
+
+/**
+ * Turns a chain timestamp into a UTC Date, or null when it is not usable.
+ *
+ * Everything calendar-shaped in the UI is formatted through here so that no label can silently
+ * pick up the viewer's local timezone: a treasury console is read by people in many places, and
+ * "today" must mean the same instant to all of them. Fixed to UTC to match `formatTimestamp`.
+ */
+function utcDate(seconds: bigint | string | null | undefined): Date | null {
+  if (seconds === null || seconds === undefined) return null;
+  const ms = Number(seconds) * 1000;
+  if (!Number.isFinite(ms)) return null;
+  const date = new Date(ms);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Names the day a period covers, e.g. "Day · Oct 2, 2026".
+ *
+ * PRESENTATION ONLY. This formats a label from an already-observed timestamp; it does not compute
+ * which day a payment belongs to. That decision belongs to `Calendar.sol` and arrives as
+ * `currentDayIndex`, so this cannot and does not influence accounting.
+ */
+export function formatDayLabel(seconds: bigint | string | null | undefined): string {
+  const date = utcDate(seconds);
+  if (!date) return "Day · —";
+  return `Day · ${date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })}`;
+}
+
+/**
+ * Names the month a period covers, e.g. "Month · October 2026".
+ *
+ * PRESENTATION ONLY, for the same reason as `formatDayLabel`: the bucket itself is the contract's.
+ */
+export function formatMonthLabel(seconds: bigint | string | null | undefined): string {
+  const date = utcDate(seconds);
+  if (!date) return "Month · —";
+  return `Month · ${date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "long",
+    year: "numeric",
+  })}`;
+}
+
+/**
+ * Names a payment's policy accounting month, e.g. "Policy month · September 2026".
+ *
+ * WHY THIS IS NOT A DATE. The input is `p.monthKey`, the bucket the contract stamped on the payment
+ * when it was reserved. `Treasury.sol` checks settlement against the STORED `monthKey` and never
+ * against `block.timestamp`, so a payment reserved in September and settled in October still
+ * accounts to September. Rendering this as a creation or settlement date would therefore be a
+ * false claim about money, which is why it is labelled as a policy bucket instead.
+ *
+ * The year/month are decoded through `monthKeyToYearMonth` rather than re-derived here, so the
+ * contract's `year * 12 + month` space — including the December edge case — is decoded in exactly
+ * one place. Nothing is recomputed from a timestamp and no clock is read.
+ */
+export function formatPolicyMonthLabel(monthKey: bigint | null | undefined): string {
+  if (monthKey === null || monthKey === undefined) return "Policy month · —";
+
+  let yearMonth: string;
+  try {
+    yearMonth = monthKeyToYearMonth(monthKey);
+  } catch {
+    return "Policy month · —";
+  }
+
+  // Matched as WHOLE tokens, not split on "-". A negative year would otherwise split into three
+  // pieces and let a malformed key through as a plausible-looking month name.
+  const parts = /^(\d{1,6})-(\d{2})$/.exec(yearMonth);
+  if (!parts) return "Policy month · —";
+
+  const parsedYear = Number(parts[1]);
+  const parsedMonth = Number(parts[2]);
+  if (!Number.isInteger(parsedYear) || !Number.isInteger(parsedMonth)) return "Policy month · —";
+  if (parsedMonth < 1 || parsedMonth > 12) return "Policy month · —";
+
+  // Day 1 of the bucket month, in UTC: the name is what matters, and the day is never displayed.
+  const name = new Date(Date.UTC(parsedYear, parsedMonth - 1, 1)).toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    month: "long",
+  });
+  return `Policy month · ${name} ${parsedYear}`;
 }
 
 /** Renders an ISO string or Date as a short UTC stamp for a dense table. */

@@ -74,8 +74,16 @@ export function PolicyLimitsCard({ overview }: { overview: TreasuryOverview }) {
                 <span className={styles.badgeMeaning}>Payments may go to addresses not on the allowlist</span>
               </span>
             ) : (
-              <span className={`${styles.badge} ${styles.tonePositive}`.trim()}>
-                <span className={styles.badgeLabel}>Rejected</span>
+              // "Not allowed", not "Rejected": this badge describes the POLICY, not an outcome.
+              // "Rejected" reads as a failed request, which would imply something was turned away.
+              // Nothing is being refused here — the contract is configured so that an unlisted
+              // recipient is never payable in the first place. The `title` keeps the precise
+              // distinction available.
+              <span
+                className={`${styles.badge} ${styles.tonePositive}`.trim()}
+                title="A policy setting, not a rejected request. Payments to addresses not on the allowlist are not permitted by the contract."
+              >
+                <span className={styles.badgeLabel}>Not allowed</span>
                 <span className={styles.badgeMeaning}>Recipients must be on the allowlist</span>
               </span>
             )}
@@ -112,20 +120,38 @@ export function CountersCard({ overview }: { overview: TreasuryOverview }) {
         </h2>
         <span className={styles.label}>from the chain</span>
       </div>
+      {/*
+       * Three values across a row instead of three stacked label/value pairs.
+       *
+       * PRESENTATION ONLY. Same three fields, same order, same `formatAmount` output and the same
+       * "from the chain" qualifier in the header — this is a layout change to remove the dead space
+       * a full-width card leaves around three short figures. No new metric is introduced, and no
+       * counter is recomputed. The column grid collapses to one column under 720px, which keeps
+       * the figures readable on a narrow screen instead of squeezing them.
+       */}
       <div className={styles.cardBody}>
-        <FieldList>
-          <Field label="Payments">
-            <Num>{counters.paymentCount}</Num>
-          </Field>
-          <Field label="Reserved">
-            <Num>{formatAmount(counters.lifetimeReserved, asset.decimals, asset.symbol)}</Num>
-            <span className={styles.dim}> · committed but not yet spent</span>
-          </Field>
-          <Field label="Spent">
-            <Num>{formatAmount(counters.lifetimeSpent, asset.decimals, asset.symbol)}</Num>
-            <span className={styles.dim}> · settled to recipients</span>
-          </Field>
-        </FieldList>
+        <div className={styles.metricRow}>
+          <div className={styles.metric}>
+            <span className={styles.metricLabel}>Payments</span>
+            <span className={styles.metricValue}>
+              <Num>{counters.paymentCount}</Num>
+            </span>
+          </div>
+          <div className={styles.metric}>
+            <span className={styles.metricLabel}>Reserved</span>
+            <span className={styles.metricValue}>
+              <Num>{formatAmount(counters.lifetimeReserved, asset.decimals, asset.symbol)}</Num>
+            </span>
+            <span className={styles.dim}>committed but not yet spent</span>
+          </div>
+          <div className={styles.metric}>
+            <span className={styles.metricLabel}>Spent</span>
+            <span className={styles.metricValue}>
+              <Num>{formatAmount(counters.lifetimeSpent, asset.decimals, asset.symbol)}</Num>
+            </span>
+            <span className={styles.dim}>settled to recipients</span>
+          </div>
+        </div>
       </div>
     </section>
   );

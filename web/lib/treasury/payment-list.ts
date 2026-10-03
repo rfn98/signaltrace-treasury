@@ -22,9 +22,9 @@ import "server-only";
 
 import { createReadClient, readChainSnapshot, readRecipient, resolveRpcUrl } from "@/lib/chain/adapter";
 import { decodeBytes32 } from "@/lib/investigation/chain-state";
-import { monthKeyToYearMonth } from "@/lib/policy/calendar";
 import { CHAIN_ID, TREASURY_ADDRESS, type Payment } from "@/lib/policy/types";
 import { getTreasuryByChain, getPaymentRequests } from "@/lib/queries";
+import { formatPolicyMonthLabel } from "@/lib/ui/format";
 import { lifecycleStatus } from "@/lib/ui/status";
 import type { PaymentList, PaymentRow } from "./types";
 
@@ -84,10 +84,14 @@ export function toPaymentRow(
     category: payment.category ? decodeBytes32(payment.category) : "—",
     reference: payment.paymentRef ? decodeBytes32(payment.paymentRef) : "—",
     dayIndex: payment.dayIndex.toString(),
+    // Raw key, kept as the lossless value. A display label is added below, never in place of this.
     monthKey: payment.monthKey.toString(),
-    // Display metadata only, so a missing key renders as a dash. Defaulting it to 0 would render
-    // a confident "1970-01", which is a fabricated date rather than an absent one.
-    monthLabel: payment.monthKey === undefined ? "—" : monthKeyToYearMonth(payment.monthKey),
+    // The policy accounting bucket, CHAIN-SOURCED from `payment.monthKey` and named in words rather
+    // than as a bare "2026-09", which read as a date attached to the reference. It is the bucket the
+    // contract stamped at reservation and still checks against at settlement — NOT a created-at or
+    // settled-at date, and NOT the index's `createdAt`. A missing key renders a dash, because
+    // defaulting it to 0 would name a confident "January 1970" rather than admit it is absent.
+    monthLabel: formatPolicyMonthLabel(payment.monthKey),
     approvedBy: payment.approvedBy ?? null,
     createdTxHash: indexedRow?.createdTxHash ?? null,
     approvedTxHash: indexedRow?.approvedTxHash ?? null,

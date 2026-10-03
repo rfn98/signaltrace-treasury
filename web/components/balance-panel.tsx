@@ -29,6 +29,35 @@ function SourceTag({ source }: { source: string }) {
   return <span className={styles.dim}> · {text}</span>;
 }
 
+/**
+ * Qualifier for the two role rows.
+ *
+ * Says the useful thing in the reader's own terms: the address shown is index metadata, and the
+ * authority or role is what the chain confirms. Deliberately does NOT say the index grants it.
+ * When the index has no address for the role, it says so rather than implying verification.
+ */
+function AuthorityNote({ known, role }: { known: boolean; role: "owner" | "agent" }) {
+  if (!known) {
+    return (
+      <span className={styles.dim} title="No indexed address for this role. Not shown, because an absent address cannot be verified against the chain.">
+        {" "}
+        · not configured
+      </span>
+    );
+  }
+
+  const subject = role === "owner" ? "Authority" : "Role";
+  return (
+    <span
+      className={styles.dim}
+      title={`Address shown from the index; the ${subject.toLowerCase()} itself is verified on chain. The index never grants authority.`}
+    >
+      {" "}
+      · {subject.toLowerCase()} verified on chain
+    </span>
+  );
+}
+
 export function BalancePanel({ overview }: { overview: TreasuryOverview }) {
   const { asset, balance, treasury, network } = overview;
   const paused = treasury.paused;
@@ -74,13 +103,28 @@ export function BalancePanel({ overview }: { overview: TreasuryOverview }) {
               · {asset.decimals} decimals{SourceTag({ source: treasury.sources.address })}
             </span>
           </Field>
+          {/*
+           * Owner and agent get a spelled-out qualifier instead of the generic SourceTag.
+           *
+           * The point of this product is that the index never confers authority, and that is easy
+           * to state and hard to read: "from index, not authority" asks a judge to decode it. These
+           * two rows say what actually matters — the address is DISPLAY metadata from the index,
+           * and the authority or role behind it is confirmed against the chain. `title` keeps the
+           * precise wording on hover without crowding the row.
+           */}
           <Field label="Owner">
             <AddressChip address={treasury.ownerAddress} explorerBaseUrl={network.explorerBaseUrl} />
-            <SourceTag source={treasury.sources.ownerAddress} />
+            <AuthorityNote
+              known={Boolean(treasury.sources.ownerAddress === "index")}
+              role="owner"
+            />
           </Field>
           <Field label="Agent">
             <AddressChip address={treasury.agentAddress} explorerBaseUrl={network.explorerBaseUrl} />
-            <SourceTag source={treasury.sources.agentAddress} />
+            <AuthorityNote
+              known={Boolean(treasury.sources.agentAddress === "index")}
+              role="agent"
+            />
           </Field>
           <Field label="Observed at">
             <Num>block {formatBlock(overview.observedAtBlock)}</Num>

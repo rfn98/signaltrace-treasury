@@ -166,6 +166,17 @@ describe("policy and lifecycle stay separate in the source", () => {
     expect(panel).not.toMatch(/\{[^}]*&&[^}]*ADVISORY_ONLY_NOTICE/);
     expect(panel).not.toMatch(/if\s*\([^)]*\)\s*\{[^}]*ADVISORY_ONLY_NOTICE/);
   });
+
+  it("shows a policy reason only when there is one to show", () => {
+    // `ReasonCode.None` is legitimate contract data meaning "no check failed", so rendering it as
+    // "Reason None" reads as an unexplained verdict. The mapping lives in `policyReasonLabel`, and
+    // the panel must go through it rather than printing the raw reason name.
+    const panel = code(join(ROOT, "components/verdict-panel.tsx"));
+    expect(panel).toMatch(/policyReasonLabel/);
+    // The Reason row is behind the helper's return value, never rendered unconditionally.
+    expect(panel).not.toMatch(/\{verdict\.policyReasonName\}/);
+    expect(panel).toMatch(/\{policyReason\s*\?/);
+  });
 });
 
 describe("no fabricated state", () => {
@@ -194,6 +205,16 @@ describe("no fabricated state", () => {
     const meter = code(join(ROOT, "components/usage-meter.tsx"));
     // The bar is inside an `unlimited ? null :` guard.
     expect(meter).toMatch(/usage\.unlimited \? null/);
+  });
+
+  it("states an absent index value rather than printing a bare null", () => {
+    // "Approved: None" is what rendering a null looks like. It read as a missing datum and
+    // contradicted the "Approved by" field directly above it, which already explained that no human
+    // approval was needed. Scoped to this one component and to a JSX text node, so the lifecycle
+    // enum label and any legitimate use of the word elsewhere are not caught by it.
+    const timeline = code(join(ROOT, "components/reconciliation-table.tsx"));
+    expect(timeline).not.toMatch(/>None</);
+    expect(timeline).toMatch(/No approval transaction/);
   });
 });
 

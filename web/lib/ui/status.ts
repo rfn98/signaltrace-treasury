@@ -21,6 +21,7 @@
  */
 
 import type { PolicyDecision } from "@/lib/investigator/types";
+import { ReasonCode } from "@/lib/policy/types";
 import type { Verdict } from "@/lib/reconcile/types";
 
 /**
@@ -169,6 +170,26 @@ export function lifecycleStatus(status: number | string): StatusDisplay {
 export function policyStatus(decision: PolicyDecision | string | null | undefined): StatusDisplay {
   if (!decision) return UNKNOWN_POLICY;
   return POLICY[decision as PolicyDecision] ?? UNKNOWN_POLICY;
+}
+
+/**
+ * The contract's reason name for a policy decision, or `null` when no check failed.
+ *
+ * WHY `None` IS NOT RENDERED. `ReasonCode.None` is legitimate Solidity data meaning "no check
+ * failed" — it is the correct reason for an AUTO_APPROVED or PENDING payment, not missing data and
+ * not an error. Printing it as "Reason None" inverts its meaning: it reads as "we have no reason",
+ * implying an unexplained verdict, when the truth is that every check passed. The human-readable
+ * explanation is already rendered directly above, from `StatusDisplay.meaning`.
+ *
+ * A real failure reason such as `UnknownRecipient` is returned unchanged, because that one IS the
+ * answer, and hiding it would hide the only thing a reader needs to know about a blocked payment.
+ *
+ * PRESENTATION ONLY. The decision, the reason code and the reason name all arrive decided from the
+ * chain by Milestone G. Nothing here re-derives a verdict, and the caller decides what to render —
+ * `null` means "no label applies", not "unknown reason".
+ */
+export function policyReasonLabel(reasonCode: number, reasonName: string): string | null {
+  return reasonCode === ReasonCode.None ? null : reasonName;
 }
 
 /** Formats a Milestone G reconciliation verdict. */

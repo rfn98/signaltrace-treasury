@@ -29,7 +29,7 @@ export default async function TreasuryOverviewPage() {
         <PageHeader
           eyebrow={overview.network.name}
           title="SignalTrace Treasury"
-          description="A on-chain treasury whose policy is evaluated by a deterministic engine from chain state. Every figure below was read from the contract at the block shown on the balance panel."
+          description="An on-chain treasury whose policy is evaluated by a deterministic engine from chain state. Every figure below was read from the contract at the block shown on the balance panel."
         >
           <Link className={styles.monoLink} href="/payments">
             Payment requests →

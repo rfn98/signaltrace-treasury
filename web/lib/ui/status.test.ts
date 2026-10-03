@@ -18,6 +18,7 @@ import {
   lifecycleStatus,
   policyStatus,
   reconciliationStatus,
+  policyReasonLabel,
   usageTone,
   LIFECYCLE_TOKEN,
 } from "@/lib/ui/status";
@@ -219,5 +220,40 @@ describe("reason codes remain reportable", () => {
       expect(typeof name).toBe("string");
       expect(name.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("policyReasonLabel", () => {
+  it("shows no label when no check failed", () => {
+    // `None` is valid contract data meaning "nothing failed" — the expected reason for an approved
+    // or pending payment. Rendering it would read as an unexplained verdict.
+    expect(policyReasonLabel(ReasonCode.None, "None")).toBeNull();
+    expect(policyReasonLabel(0, "None")).toBeNull();
+  });
+
+  it("keeps a genuine failure reason", () => {
+    // The positive case the fix must not break: on a BLOCKED payment the reason IS the answer.
+    expect(policyReasonLabel(ReasonCode.UnknownRecipient, "UnknownRecipient")).toBe("UnknownRecipient");
+    expect(policyReasonLabel(ReasonCode.DailyLimit, "DailyLimit")).toBe("DailyLimit");
+  });
+
+  it("passes the supplied name through untouched", () => {
+    // Asserted against the enum rather than hand-typed strings, so a new contract reason renders
+    // with its real Solidity name without this file needing to know about it. A numeric enum's
+    // reverse mappings are skipped by the typeof guard, exactly as in the test above.
+    for (const name of Object.keys(ReasonCode)) {
+      const code = ReasonCode[name as keyof typeof ReasonCode];
+      if (typeof code !== "number" || code === ReasonCode.None) continue;
+      expect(policyReasonLabel(code, name)).toBe(name);
+    }
+  });
+
+  it("keys off the reason code alone, never the decision", () => {
+    // The helper takes no decision token, so it cannot re-derive one. A name that disagrees with
+    // the code is still passed through verbatim: the name is reported, never second-guessed.
+    expect(policyReasonLabel(ReasonCode.Paused, "Paused")).toBe("Paused");
+    expect(policyReasonLabel(ReasonCode.UnknownRecipient, "SingleTxLimit")).toBe("SingleTxLimit");
+    // And `None` stays hidden whatever the name claims, because the code is what the contract set.
+    expect(policyReasonLabel(ReasonCode.None, "UnknownRecipient")).toBeNull();
   });
 });

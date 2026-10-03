@@ -144,7 +144,10 @@ export function SettlementTimeline({
             {settlement.approvedTxHash ? (
               <HashLink hash={settlement.approvedTxHash} explorerBaseUrl={explorerBaseUrl} />
             ) : (
-              <span className={styles.dim}>None</span>
+              // States the absence rather than printing a bare null. Matches the neighbouring
+              // "Not indexed" / "Not settled" register, and does not re-assert the authority claim
+              // the "Approved by" field above already makes.
+              <span className={styles.dim}>No approval transaction</span>
             )}
           </Field>
           <Field label="Executed">
