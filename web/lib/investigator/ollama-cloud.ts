@@ -4,7 +4,6 @@ import type {
   InvestigatorResult,
 } from "./types";
 import {
-  INVESTIGATOR_OUTPUT_SCHEMA,
   INVESTIGATOR_PROMPT_VERSION,
   INVESTIGATOR_SYSTEM_PROMPT,
   buildUserMessage,
@@ -19,7 +18,15 @@ import { canonicalJson } from "@/lib/evidence/canonical";
  *
  * Implements the documented Ollama Cloud HTTP contract directly:
  *   POST {base}/api/chat   with   Authorization: Bearer <OLLAMA_API_KEY>
- *   and a JSON Schema in `format` for constrained output.
+ *   and `format: "json"` for constrained output.
+ *
+ * WHY JSON MODE RATHER THAN A SCHEMA IN `format`: `format` carries either a JSON Schema object
+ * or the string `"json"`, never both. Sending the schema was tried first and, against the
+ * pinned gpt-oss model, it was silently not honoured — the model replied in Markdown and the
+ * strict parser rejected it as MALFORMED_JSON. JSON mode is the form the decoder actually
+ * enforces, so syntax is guaranteed there; the required shape now travels in the system prompt
+ * (`INVESTIGATOR_OUTPUT_CONTRACT`), and the result is validated and grounded afterwards in any
+ * case. The parser below is unchanged and still refuses anything that is not a JSON object.
  *
  * ISOLATION: this is the ONLY module in the milestone that knows Ollama exists. It has no
  * import of the policy engine, the evidence builder, the chain adapter, or Prisma, and it
@@ -185,9 +192,10 @@ export class OllamaCloudInvestigatorProvider implements InvestigatorProvider {
         body: JSON.stringify({
           model: this.config.model,
           stream: false,
-          // Constrained decoding: the model is given the schema, so free prose is not the
-          // primary mechanism we have to cope with.
-          format: INVESTIGATOR_OUTPUT_SCHEMA,
+          // JSON mode guarantees a well-formed reply; the shape is stated in the system prompt.
+          // This is not a substitute for validation — `validateInvestigatorResult` still has the
+          // final word on whether the object is acceptable.
+          format: "json",
           messages: [
             { role: "system", content: INVESTIGATOR_SYSTEM_PROMPT },
             {
